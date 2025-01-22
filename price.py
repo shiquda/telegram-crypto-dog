@@ -1,8 +1,17 @@
 import okx.MarketData as MarketData
 from loguru import logger
 import time
+import configparser
 
-marketDataAPI = MarketData.MarketAPI()
+config = configparser.ConfigParser()
+config.read("config.cfg")
+DEBUG = config.getboolean("general", "DEBUG")
+PROXY_URL = config.get("general", "PROXY_URL")
+
+if PROXY_URL:
+    marketDataAPI = MarketData.MarketAPI(debug=DEBUG, proxy=PROXY_URL, flag="2")
+else:
+    marketDataAPI = MarketData.MarketAPI(debug=DEBUG, flag="2")
 
 
 def get_tickers_data():
@@ -26,6 +35,8 @@ def get_ticker_data(inst_id):
             return result.get("data")[0]
         else:
             logger.error(f"获取ticker数据失败: {result.get('msg')}")
+            if DEBUG:
+                logger.error(f"result: {result}")
             return None
     except Exception as e:
         logger.error(f"获取ticker数据时发生错误: {e}")
@@ -83,7 +94,7 @@ def get_coin_price_percentage(inst_id, interval: int, current_price: float):
 
 
 def test():
-    print(get_coin_price_percentage("DOGE-USDT", 10000000, 0.3769))
+    print(get_ticker_data("TRUMP-USDT"))
 
 
 if __name__ == "__main__":
