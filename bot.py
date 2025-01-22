@@ -3,13 +3,15 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 import configparser
 import asyncio
-from price import get_ticker_data
+from price import get_ticker_data, get_coin_price_percentage
 from utils import price_query_message
 from loguru import logger
 from setup import setup
 
 config = configparser.ConfigParser()
 config.read("config.cfg")
+
+DEBUG = config.getboolean("general", "DEBUG")
 
 TELEGRAM_BOT_TOKEN = config.get("telegram", "TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = config.get("telegram", "TELEGRAM_CHAT_ID")
@@ -34,16 +36,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def price(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        query = context.args[0].upper()
-        if "-" not in query:
-            query = f"{query}-USDT"
-        logger.info(f"用户 {update.message.from_user.username} 使用机器人 /price 查询 {query} 的价格")
-        ticker_data = get_ticker_data(query)
-        logger.success(f"查询 {query} 成功！")
-        await update.message.reply_text(price_query_message(ticker_data))
+        coin_swap = context.args[0].upper()
+        if "-" not in coin_swap:
+            coin_swap = f"{coin_swap}-USDT"
+        logger.info(f"用户 {update.message.from_user.username} 使用机器人 /price 查询 {coin_swap} 的价格")
+        ticker_data = get_ticker_data(coin_swap)
+        # 查询前1min、15min、1h、4h的涨跌幅
+        current_price = float(ticker_data.get("last"))
+        price_percentage_1min = get_coin_price_percentage(coin_swap, 60*1000, current_price)
+        price_percentage_15min = get_coin_price_percentage(coin_swap, 15*60*1000, current_price)
+        price_percentage_1h = get_coin_price_percentage(coin_swap, 60*60*1000, current_price)
+        price_percentage_4h = get_coin_price_percentage(coin_swap, 4*60*60*1000, current_price)
+        percentage_dict = {
+            "1min": price_percentage_1min,
+            "15min": price_percentage_15min,
+            "1h": price_percentage_1h,
+            "4h": price_percentage_4h
+        }
+        logger.success(f"查询 {coin_swap} 成功！")
+        await update.message.reply_text(price_query_message(ticker_data, percentage_dict))
     except Exception as e:
-        logger.error(f"用户 {update.message.from_user.username} 使用机器人 /price 查询 {query} 的价格失败，错误信息：{e}")
+        logger.error(f"用户 {update.message.from_user.username} 使用机器人 /price 查询 {coin_swap} 的价格失败，错误信息：{e}")
         await update.message.reply_text("请输入正确的币种名称，例如 /price BTC，/price ETH-BTC")
+        if DEBUG:
+            await update.message.reply_text(f"[DEBUG] 错误信息：{e}")
 
 
 def run():
