@@ -10,11 +10,11 @@ def get_tickers_data():
         if result.get("code") == "0":
             return result.get("data")
         else:
-            logger.error(f"Failed to get data: {result.get('msg')}")
+            logger.error(f"获取tickers数据失败: {result.get('msg')}")
             return None
 
     except Exception as e:
-        logger.error(f"Failed to get data: {e}")
+        logger.error(f"获取tickers数据时发生错误: {e}")
         return None
 
 
@@ -24,10 +24,10 @@ def get_ticker_data(inst_id):
         if result.get("code") == "0":
             return result.get("data")[0]
         else:
-            logger.error(f"Failed to get data: {result.get('msg')}")
+            logger.error(f"获取ticker数据失败: {result.get('msg')}")
             return None
     except Exception as e:
-        logger.error(f"Failed to get data: {e}")
+        logger.error(f"获取ticker数据时发生错误: {e}")
         return None
 
 
