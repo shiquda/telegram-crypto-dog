@@ -40,13 +40,26 @@ async def price(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if "-" not in coin_swap:
             coin_swap = f"{coin_swap}-USDT"
         logger.info(f"用户 {update.message.from_user.username} 使用机器人 /price 查询 {coin_swap} 的价格")
-        ticker_data = get_ticker_data(coin_swap)
+
+        loop = asyncio.get_event_loop()
+        ticker_data = await loop.run_in_executor(None, get_ticker_data, coin_swap)
+
+        if ticker_data is None:
+            logger.error(f"未能获取到ticker数据")
+            raise ValueError("未能获取到ticker数据")
+
         # 查询前1min、15min、1h、4h的涨跌幅
         current_price = float(ticker_data.get("last"))
-        price_percentage_1min = get_coin_price_percentage(coin_swap, 60*1000, current_price)
-        price_percentage_15min = get_coin_price_percentage(coin_swap, 15*60*1000, current_price)
-        price_percentage_1h = get_coin_price_percentage(coin_swap, 60*60*1000, current_price)
-        price_percentage_4h = get_coin_price_percentage(coin_swap, 4*60*60*1000, current_price)
+
+        tasks = [
+            loop.run_in_executor(None, get_coin_price_percentage, coin_swap, 60*1000, current_price),
+            loop.run_in_executor(None, get_coin_price_percentage, coin_swap, 15*60*1000, current_price),
+            loop.run_in_executor(None, get_coin_price_percentage, coin_swap, 60*60*1000, current_price),
+            loop.run_in_executor(None, get_coin_price_percentage, coin_swap, 4*60*60*1000, current_price)
+        ]
+
+        price_percentage_1min, price_percentage_15min, price_percentage_1h, price_percentage_4h = await asyncio.gather(*tasks)
+
         percentage_dict = {
             "1min": price_percentage_1min,
             "15min": price_percentage_15min,
